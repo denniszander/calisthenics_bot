@@ -1,0 +1,4 @@
+SELECT 	E.*
+FROM 	Exercise_In_Plan P
+LEFT JOIN Exercises E on P.ExerciseID = E.ID 
+WHERE 	P.ExerciseID = 2 
