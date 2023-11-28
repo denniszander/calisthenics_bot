@@ -21,9 +21,9 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 # Stages
-START_ROUTES, TRAINING_ROUTES, END_ROUTES = range(3)
+START_ROUTES, TRAINING_MENU_ROUTES, TRAINING_ROUTES, DATA_ROUTES, VISUALS_ROUTES, END_ROUTES = range(6)
 # Callback data
-ONE, TWO, THREE, FOUR = range(4)
+ZERO, ONE, TWO, THREE, FOUR = range(5)
 # Initialize dbhelper
 dbhelper = DBHelper(dbname="./DB/Calisthenics")
 
@@ -45,17 +45,41 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     keyboard = [
         [
             InlineKeyboardButton("Start Training", callback_data=str(ONE)),
-            InlineKeyboardButton("Do other stuff...(later)", callback_data=str(TWO)),
+            InlineKeyboardButton("Add or Change Data", callback_data=str(TWO)),
+            InlineKeyboardButton("Visual", callback_data=str(THREE)),
+            InlineKeyboardButton("End", callback_data=str(FOUR)),
         ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     # Send message with text and appended InlineKeyboard
-    await update.message.reply_text("Start handler, Choose a route", reply_markup=reply_markup)
+    await update.message.reply_text("What do you want to do today :)?", reply_markup=reply_markup)
     # Tell ConversationHandler that we're in state `FIRST` now
     return START_ROUTES
 
+async def start_again(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    # Build InlineKeyboard where each button has a displayed text
+    # and a string as callback_data
+    # The keyboard is a list of button rows, where each row is in turn
+    # a list (hence `[[...]]`).
+    query = update.callback_query
+    await query.answer()
+    keyboard = [
+        [
+            InlineKeyboardButton("Start Training", callback_data=str(ONE)),
+            InlineKeyboardButton("Add or Change Data", callback_data=str(TWO)),
+            InlineKeyboardButton("Visual", callback_data=str(THREE)),
+            InlineKeyboardButton("End", callback_data=str(FOUR)),
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    # Send message with text and appended InlineKeyboard
+    await query.edit_message_text(
+        text="What do you want to do today :)?", reply_markup=reply_markup
+    )
+    # Tell ConversationHandler that we're in state `FIRST` now
+    return START_ROUTES
 
-async def training(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def training_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Show new choice of buttons"""
     query = update.callback_query
     await query.answer()
@@ -67,27 +91,91 @@ async def training(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await query.edit_message_text(
-        text="Choose a traing.", reply_markup=reply_markup
+        text="Choose a trainig.", reply_markup=reply_markup
     )
-    return TRAINING_ROUTES
+    if callback_data == str(ONE):
+        return TRAINING_MENU_ROUTES
+    else:
+        return TRAINING_ROUTES
 
-async def plan(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def data(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Show new choice of buttons"""
     query = update.callback_query
     await query.answer()
     keyboard = [
         [
-            InlineKeyboardButton("Plan", callback_data=str(ONE)),
-            InlineKeyboardButton("Exercises", callback_data=str(TWO)),
+            InlineKeyboardButton("Run Again", callback_data=str(ZERO)),
+            InlineKeyboardButton("End", callback_data=str(ONE)),
         ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await query.edit_message_text(
-        text="Choose a traing.", reply_markup=reply_markup
+        text="Let's add some more exercise", reply_markup=reply_markup
     )
-    return TRAINING_ROUTES
+    return DATA_ROUTES
 
-async def exercises(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def visuals(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Show new choice of buttons"""
+    query = update.callback_query
+    await query.answer()
+    keyboard = [
+        [
+            InlineKeyboardButton("Run Again", callback_data=str(ZERO)),
+            InlineKeyboardButton("End", callback_data=str(ONE)),
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await query.edit_message_text(
+        text="You want to see how strong you are?", reply_markup=reply_markup
+    )
+    return VISUALS_ROUTES
+
+async def end(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Show new choice of buttons"""
+    query = update.callback_query
+    await query.answer()
+    keyboard = [
+        [
+            InlineKeyboardButton("Start again", callback_data=str(ZERO)),
+            InlineKeyboardButton("End", callback_data=str(ONE)),
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await query.edit_message_text(
+        text="Are you sure to quit?", reply_markup=reply_markup
+    )
+    return END_ROUTES
+
+async def end_final(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Returns `ConversationHandler.END`, which tells the
+    ConversationHandler that the conversation is over.
+    """
+    query = update.callback_query
+    await query.answer()
+    await query.edit_message_text(text="See you next time!")
+    return ConversationHandler.END
+
+
+async def select_plan(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Show new choice of buttons"""
+    query = update.callback_query
+    await query.answer()
+    keyboard = [
+        [
+            InlineKeyboardButton("Go Back", callback_data=str(ZERO)),
+            InlineKeyboardButton("Start training", callback_data=str(TWO)),
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await query.edit_message_text(
+        text="Select today's plan", reply_markup=reply_markup
+    )
+    if callback_data == str(TWO):
+        return TRAINING_ROUTES
+    else:
+        return TRAINING_MENU_ROUTES
+
+async def select_exercises(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """This function needs to have following functionalities:
             1. Show all exercieses with the possibility to choose them (maybe only 10? With more button? Later...)
             2. Have a fallback into start menu
@@ -97,19 +185,9 @@ async def exercises(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     keyboard = [bulid_exercise_keyboard()]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await query.edit_message_text(
-        text="Choose a traing.", reply_markup=reply_markup
+        text="Select your exercise:", reply_markup=reply_markup
     )
     return TRAINING_ROUTES
-
-async def end(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Returns `ConversationHandler.END`, which tells the
-    ConversationHandler that the conversation is over.
-    """
-    query = update.callback_query
-    await query.answer()
-    await query.edit_message_text(text="See you next time!")
-    return ConversationHandler.END
-
 
 def main() -> None:
     """Run the bot."""
@@ -126,15 +204,30 @@ def main() -> None:
         entry_points=[CommandHandler("start", start)],
         states={
             START_ROUTES: [
-                CallbackQueryHandler(training, pattern="^" + str(ONE) + "$"),
-                CallbackQueryHandler(end, pattern="^" + str(TWO) + "$"),
+                CallbackQueryHandler(training_menu, pattern="^" + str(ONE) + "$"),
+                CallbackQueryHandler(data, pattern="^" + str(TWO) + "$"),
+                CallbackQueryHandler(visuals, pattern="^" + str(THREE) + "$"),
+                CallbackQueryHandler(end, pattern="^" + str(FOUR) + "$"),
+            ],
+            TRAINING_MENU_ROUTES: [
+                CallbackQueryHandler(training_menu, pattern="^" + str(ZERO) + "$"),
+                CallbackQueryHandler(select_plan, pattern="^" + str(ONE) + "$"),
             ],
             TRAINING_ROUTES: [
-                CallbackQueryHandler(plan, pattern="^" + str(ONE) + "$"),
-                CallbackQueryHandler(exercises, pattern="^" + str(TWO) + "$"),
+                CallbackQueryHandler(start, pattern="^" + str(ONE) + "$"),
+                CallbackQueryHandler(select_exercises, pattern="^" + str(TWO) + "$"),
+            ],
+            DATA_ROUTES: [
+                CallbackQueryHandler(data, pattern="^" + str(ZERO) + "$"),
+                CallbackQueryHandler(end, pattern="^" + str(ONE) + "$"),
+            ],
+            VISUALS_ROUTES: [
+                CallbackQueryHandler(visuals, pattern="^" + str(ZERO) + "$"),
+                CallbackQueryHandler(end, pattern="^" + str(ONE) + "$"),
             ],
             END_ROUTES: [
-                CallbackQueryHandler(end, pattern="^" + str(TWO) + "$"),
+                CallbackQueryHandler(start_again, pattern="^" + str(ZERO) + "$"),
+                CallbackQueryHandler(end_final, pattern="^" + str(ONE) + "$"),
             ],
         },
         fallbacks=[CommandHandler("start", start)],
