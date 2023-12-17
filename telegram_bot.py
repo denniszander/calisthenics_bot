@@ -58,7 +58,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 async def start_again(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     # Build InlineKeyboard where each button has a displayed text
-    # and a string as callback_data
+    # and a string as callback_ata
     # The keyboard is a list of button rows, where each row is in turn
     # a list (hence `[[...]]`).
     query = update.callback_query
@@ -87,16 +87,14 @@ async def training_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         [
             InlineKeyboardButton("Plan", callback_data=str(ONE)),
             InlineKeyboardButton("Exercises", callback_data=str(TWO)),
+            InlineKeyboardButton("End", callback_data=str(THREE)),
         ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await query.edit_message_text(
         text="Choose a trainig.", reply_markup=reply_markup
     )
-    if callback_data == str(ONE):
-        return TRAINING_MENU_ROUTES
-    else:
-        return TRAINING_ROUTES
+    return TRAINING_MENU_ROUTES
 
 async def data(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Show new choice of buttons"""
@@ -170,10 +168,23 @@ async def select_plan(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
     await query.edit_message_text(
         text="Select today's plan", reply_markup=reply_markup
     )
-    if callback_data == str(TWO):
-        return TRAINING_ROUTES
-    else:
-        return TRAINING_MENU_ROUTES
+    return TRAINING_MENU_ROUTES
+
+async def start_training(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Show new choice of buttons"""
+    query = update.callback_query
+    await query.answer()
+    keyboard = [
+        [
+            InlineKeyboardButton("Go Back", callback_data=str(ZERO)),
+            InlineKeyboardButton("Start training", callback_data=str(ONE)),
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await query.edit_message_text(
+        text="Okay, let's go!'", reply_markup=reply_markup
+    )
+    return TRAINING_ROUTES
 
 async def select_exercises(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """This function needs to have following functionalities:
@@ -187,6 +198,16 @@ async def select_exercises(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     await query.edit_message_text(
         text="Select your exercise:", reply_markup=reply_markup
     )
+    print(update.callback_query.data)
+    return TRAINING_ROUTES
+
+async def test(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """This function needs to have following functionalities:
+            1. Show all exercieses with the possibility to choose them (maybe only 10? With more button? Later...)
+            2. Have a fallback into start menu
+    """
+    print(update.message.text)
+    callback_data = str(ONE)
     return TRAINING_ROUTES
 
 def main() -> None:
@@ -212,10 +233,12 @@ def main() -> None:
             TRAINING_MENU_ROUTES: [
                 CallbackQueryHandler(training_menu, pattern="^" + str(ZERO) + "$"),
                 CallbackQueryHandler(select_plan, pattern="^" + str(ONE) + "$"),
+                CallbackQueryHandler(start_training, pattern="^" + str(TWO) + "$"),
+                CallbackQueryHandler(end, pattern="^" + str(THREE) + "$"),
             ],
             TRAINING_ROUTES: [
-                CallbackQueryHandler(start, pattern="^" + str(ONE) + "$"),
-                CallbackQueryHandler(select_exercises, pattern="^" + str(TWO) + "$"),
+                CallbackQueryHandler(select_exercises, pattern="^" + str(ONE) + "$"),
+                CallbackQueryHandler(test, pattern="^" + str(TWO) + "$"),
             ],
             DATA_ROUTES: [
                 CallbackQueryHandler(data, pattern="^" + str(ZERO) + "$"),

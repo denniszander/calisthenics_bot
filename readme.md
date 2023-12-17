@@ -4,7 +4,7 @@ https://github.com/python-telegram-bot/python-telegram-bot/wiki/Extensions---You
 Token is not inside repo and should be put into 'telegram_token.py'
 
 Current to do:
-    * Routung is now as planned. However we cannot use plain if statment to change route...See Training menu route
+    * How do we get text from InlineKeyboard? I.e. the name of the exercise?
     * Continue work on 'Single Exercises' conversation
 
 
