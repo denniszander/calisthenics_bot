@@ -29,8 +29,8 @@ dbhelper = DBHelper(dbname="./DB/Calisthenics")
 
 def bulid_exercise_keyboard():
     exercises = dbhelper.exercises()
-    output_keyboard = [InlineKeyboardButton(exercise[0], callback_data=str(TWO)) for exercise in exercises]
-    output_keyboard.insert(0, InlineKeyboardButton("Go Back to Start", callback_data=str(ONE)) )
+    output_keyboard = [InlineKeyboardButton(exercise[0], callback_data=str(TWO)+'_'+exercise[0] ) for exercise in exercises]
+    output_keyboard.insert(0, InlineKeyboardButton("Go Back to Start", callback_data=str(THREE)) )
     return output_keyboard
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -198,15 +198,15 @@ async def select_exercises(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     await query.edit_message_text(
         text="Select your exercise:", reply_markup=reply_markup
     )
-    print(update.callback_query.data)
     return TRAINING_ROUTES
 
-async def test(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def run_exercise(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """This function needs to have following functionalities:
             1. Show all exercieses with the possibility to choose them (maybe only 10? With more button? Later...)
             2. Have a fallback into start menu
     """
-    print(update.message.text)
+    exercise = update.callback_query.data[2:]
+    print(exercise)
     callback_data = str(ONE)
     return TRAINING_ROUTES
 
@@ -238,7 +238,8 @@ def main() -> None:
             ],
             TRAINING_ROUTES: [
                 CallbackQueryHandler(select_exercises, pattern="^" + str(ONE) + "$"),
-                CallbackQueryHandler(test, pattern="^" + str(TWO) + "$"),
+                CallbackQueryHandler(run_exercise, pattern="^" + str(TWO) + "_*."),
+                CallbackQueryHandler(training_menu, pattern="^" + str(THREE) + "$"),
             ],
             DATA_ROUTES: [
                 CallbackQueryHandler(data, pattern="^" + str(ZERO) + "$"),
