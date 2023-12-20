@@ -29,7 +29,7 @@ dbhelper = DBHelper(dbname="./DB/Calisthenics")
 
 def bulid_exercise_keyboard():
     exercises = dbhelper.exercises()
-    output_keyboard = [InlineKeyboardButton(exercise[0], callback_data=str(TWO)+'_'+exercise[0] ) for exercise in exercises]
+    output_keyboard = [InlineKeyboardButton(exercise[1], callback_data=str(TWO)+'_'+str(exercise[0])) for exercise in exercises]
     output_keyboard.insert(0, InlineKeyboardButton("Go Back to Start", callback_data=str(THREE)) )
     return output_keyboard
 
@@ -182,7 +182,7 @@ async def start_training(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await query.edit_message_text(
-        text="Okay, let's go!'", reply_markup=reply_markup
+        text="Okay, let's go!", reply_markup=reply_markup
     )
     return TRAINING_ROUTES
 
@@ -201,12 +201,12 @@ async def select_exercises(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     return TRAINING_ROUTES
 
 async def run_exercise(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """This function needs to have following functionalities:
-            1. Show all exercieses with the possibility to choose them (maybe only 10? With more button? Later...)
-            2. Have a fallback into start menu
+    """When this function is called for the first time, it should show the last set and repetions of the exercise (if there is any).
+    Then it should ask for input of the new set and repetions. Set by set.
     """
-    exercise = update.callback_query.data[2:]
-    print(exercise)
+    exercise_id = update.callback_query.data[2:]
+    message = dbhelper.get_last_exercise_info(exercise_id)
+    await context.bot.send_message(chat_id=update.effective_chat.id, text=message)
     callback_data = str(ONE)
     return TRAINING_ROUTES
 
@@ -265,3 +265,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
