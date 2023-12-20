@@ -10,6 +10,8 @@ from telegram.ext import (
     CommandHandler,
     ContextTypes,
     ConversationHandler,
+    filters,
+    MessageHandler,
 )
 
 # Enable logging
@@ -32,6 +34,7 @@ def bulid_exercise_keyboard():
     output_keyboard = [InlineKeyboardButton(exercise[1], callback_data=str(TWO)+'_'+str(exercise[0])) for exercise in exercises]
     output_keyboard.insert(0, InlineKeyboardButton("Go Back to Start", callback_data=str(THREE)) )
     return output_keyboard
+
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Send message on `/start`."""
@@ -204,11 +207,16 @@ async def run_exercise(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     """When this function is called for the first time, it should show the last set and repetions of the exercise (if there is any).
     Then it should ask for input of the new set and repetions. Set by set.
     """
-    exercise_id = update.callback_query.data[2:]
-    message = dbhelper.get_last_exercise_info(exercise_id)
-    await context.bot.send_message(chat_id=update.effective_chat.id, text=message)
-    callback_data = str(ONE)
+    query = update.callback_query
+    exercise_id = query.data[2:]
+    await query.edit_message_text(text=dbhelper.get_last_exercise_info(exercise_id))
+    reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton("Done", callback_data=str(FOUR))]])
+    await context.bot.send_message(chat_id=query.message.chat_id, text="How many reps did you do?", reply_markup=reply_markup)
     return TRAINING_ROUTES
+
+async def get_reps(update: Update, context: ContextTypes.DEFAULT_TYPE): 
+    """This function should be called after run_exercise and should get the number of reps for the last set."""
+    print(update.message.text)
 
 def main() -> None:
     """Run the bot."""
@@ -240,6 +248,8 @@ def main() -> None:
                 CallbackQueryHandler(select_exercises, pattern="^" + str(ONE) + "$"),
                 CallbackQueryHandler(run_exercise, pattern="^" + str(TWO) + "_*."),
                 CallbackQueryHandler(training_menu, pattern="^" + str(THREE) + "$"),
+                # MessageHandler with regex filter for all numbers
+                MessageHandler(filters.Regex(pattern="^[0-9]+$"), get_reps),
             ],
             DATA_ROUTES: [
                 CallbackQueryHandler(data, pattern="^" + str(ZERO) + "$"),
