@@ -61,7 +61,8 @@ class DBHelper:
         resultsRaw = cursor.fetchone()
         if resultsRaw is None:
             return F"You have not done this exercise yet."
-        return F"Last time you did {resultsRaw[0]} was {resultsRaw[1]} times on {time.strftime('%d.%m.%Y', time.localtime(resultsRaw[3]))} with the remark: {resultsRaw[2]}"
+        # Return time in format dd.mm.yyyy with hour and minute
+        return F"Exercise: {resultsRaw[0]} \nReps: {resultsRaw[1]} \nDate: {time.strftime('%d.%m.%Y %H:%M', time.localtime(resultsRaw[3]))} \nRemark: {resultsRaw[2]}"
 
     def update_history_reps(self, reps):
         """
@@ -100,6 +101,15 @@ class DBHelper:
         else:
             stmt = "UPDATE History SET Remark = ? WHERE TrainingID = ? AND ExerciseID = ?"
             args = (remark, self.training_id, self.exercise_id)
+        self.conn.execute(stmt, args)
+        self.conn.commit()
+
+    def delete_exercise_data(self):
+        """
+        Delete all data from the history table for the current exercise in training session
+        """
+        stmt = "DELETE FROM History WHERE TrainingID = ? AND ExerciseID = ?"
+        args = (self.training_id, self.exercise_id)
         self.conn.execute(stmt, args)
         self.conn.commit()
 

@@ -26,27 +26,25 @@ logger = logging.getLogger(__name__)
 START_ROUTES, TRAINING_MENU_ROUTES, TRAINING_ROUTES, DATA_ROUTES, VISUALS_ROUTES, END_ROUTES = range(6)
 # Callback data
 ZERO, ONE, TWO, THREE, FOUR = range(5)
-GET_REMARK, REMARK, START_AGAIN, TRAINING_MENU, TRAINING, DATA, VISUALS, END, END_FINAL, SELECT_PLAN, START_TRAINING, SELECT_EXERCISES, SELECT_NEXT_EXERCISES, RUN_EXERCISE, GET_REPS = range(15)
+DELETE_EXERCISE_DATA, GET_REMARK, REMARK, START_AGAIN, TRAINING_MENU, TRAINING, DATA, VISUALS, END, END_FINAL, SELECT_PLAN, START_TRAINING, SELECT_EXERCISES, SELECT_NEXT_EXERCISES, RUN_EXERCISE, GET_REPS = range(16)
 # Initialize dbhelper
 dbhelper = DBHelper(dbname="./DB/Calisthenics")
 
 def bulid_exercise_keyboard():
     exercises = dbhelper.exercises()
-    output_keyboard = [InlineKeyboardButton(exercise[1], callback_data=str(RUN_EXERCISE)+'_'+str(exercise[0])) for exercise in exercises]
-    output_keyboard.insert(0, InlineKeyboardButton("End Training", callback_data=str(END)))
+    output_keyboard = [[InlineKeyboardButton(exercise[1], callback_data=str(RUN_EXERCISE)+'_'+str(exercise[0]))] for exercise in exercises]
+    output_keyboard.insert(0, [InlineKeyboardButton("End Training", callback_data=str(END))])
     return output_keyboard
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Send message on `/start`."""
     keyboard = [
-        [
-            InlineKeyboardButton("Start Training", callback_data=str(TRAINING_MENU)),
-            InlineKeyboardButton("Add or Change Data", callback_data=str(DATA)),
-            InlineKeyboardButton("Visual", callback_data=str(VISUALS)),
-            InlineKeyboardButton("End", callback_data=str(END)),
-        ]
-    ]
+        [InlineKeyboardButton("Start Training", callback_data=str(TRAINING_MENU))],
+        [InlineKeyboardButton("Add or Change Data", callback_data=str(DATA))],
+        [InlineKeyboardButton("Visual", callback_data=str(VISUALS))],
+        [InlineKeyboardButton("End", callback_data=str(END))],
+     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     # Send message with text and appended InlineKeyboard
     # Depending on when the this command is called, we need a new message or edit the message/keyboard.
@@ -63,15 +61,13 @@ async def training_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     query = update.callback_query
     await query.answer()
     keyboard = [
-        [
-            InlineKeyboardButton("Plan", callback_data=str(SELECT_PLAN)),
-            InlineKeyboardButton("Exercises", callback_data=str(START_TRAINING)),
-            InlineKeyboardButton("End", callback_data=str(END)),
+        [InlineKeyboardButton("Plan", callback_data=str(SELECT_PLAN))],
+        [InlineKeyboardButton("Exercises", callback_data=str(START_TRAINING))],
+        [InlineKeyboardButton("End", callback_data=str(END))],
         ]
-    ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await query.edit_message_text(
-        text="Choose a trainig.", reply_markup=reply_markup
+        text="Choose a training.", reply_markup=reply_markup
     )
     return TRAINING_MENU_ROUTES
 
@@ -80,11 +76,9 @@ async def data(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
     await query.answer()
     keyboard = [
-        [
-            InlineKeyboardButton("Run Again", callback_data=str(DATA)),
-            InlineKeyboardButton("End", callback_data=str(END)),
+        [InlineKeyboardButton("Run Again", callback_data=str(DATA))],
+        [InlineKeyboardButton("End", callback_data=str(END))],
         ]
-    ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await query.edit_message_text(
         text="Let's add some more exercise", reply_markup=reply_markup
@@ -96,11 +90,9 @@ async def visuals(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
     await query.answer()
     keyboard = [
-        [
-            InlineKeyboardButton("Run Again", callback_data=str(VISUALS)),
-            InlineKeyboardButton("End", callback_data=str(END)),
+        [InlineKeyboardButton("Run Again", callback_data=str(VISUALS))],
+        [InlineKeyboardButton("End", callback_data=str(END))],
         ]
-    ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await query.edit_message_text(
         text="You want to see how strong you are?", reply_markup=reply_markup
@@ -112,11 +104,9 @@ async def end(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
     await query.answer()
     keyboard = [
-        [
-            InlineKeyboardButton("Start again", callback_data=str(START_AGAIN)),
-            InlineKeyboardButton("End", callback_data=str(END_FINAL)),
+        [InlineKeyboardButton("Start again", callback_data=str(START_AGAIN))],
+        [InlineKeyboardButton("End", callback_data=str(END_FINAL))],
         ]
-    ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await query.edit_message_text(
         text="Are you sure to quit?", reply_markup=reply_markup
@@ -138,11 +128,9 @@ async def select_plan(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
     query = update.callback_query
     await query.answer()
     keyboard = [
-        [
-            InlineKeyboardButton("Go Back", callback_data=str(TRAINING_MENU)),
-            InlineKeyboardButton("Start training", callback_data=str(START_TRAINING)),
+        [InlineKeyboardButton("Go Back", callback_data=str(TRAINING_MENU))],
+        [InlineKeyboardButton("Start training", callback_data=str(START_TRAINING))],
         ]
-    ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await query.edit_message_text(
         text="Select today's plan", reply_markup=reply_markup
@@ -154,11 +142,9 @@ async def start_training(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     query = update.callback_query
     await query.answer()
     keyboard = [
-        [
-            InlineKeyboardButton("Go Back", callback_data=str(TRAINING_MENU)),
-            InlineKeyboardButton("Start training", callback_data=str(SELECT_EXERCISES)),
+        [InlineKeyboardButton("Go Back", callback_data=str(TRAINING_MENU))],
+        [InlineKeyboardButton("Start training", callback_data=str(SELECT_EXERCISES))],
         ]
-    ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await query.edit_message_text(
         text="Okay, let's go!", reply_markup=reply_markup
@@ -172,13 +158,15 @@ async def select_exercises(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     """
     query = update.callback_query
     await query.answer()
-    keyboard = [bulid_exercise_keyboard()]
+    keyboard = bulid_exercise_keyboard()
     reply_markup = InlineKeyboardMarkup(keyboard)
     if query.data == str(SELECT_EXERCISES):
         dbhelper.start_training()
         await query.edit_message_text(text="Select your exercise:", reply_markup=reply_markup)
     else:
-        await query.edit_message_text(text="Nice, let's do the next exercise")
+        text = "Nice job! \n" + dbhelper.get_last_exercise_info() 
+        dbhelper.exercise_id = None
+        await query.edit_message_text(text=text)
         await context.bot.send_message(chat_id=query.message.chat_id, text="Select your exercise:", reply_markup=reply_markup)
     return TRAINING_ROUTES
 
@@ -188,10 +176,18 @@ async def run_exercise(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     """
     query = update.callback_query
     dbhelper.exercise_id = query.data.split('_')[1]
-    await query.edit_message_text(text=dbhelper.get_last_exercise_info())
-    reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton("Done", callback_data=str(SELECT_NEXT_EXERCISES))]])
+    text = "Last time you did: \n" + dbhelper.get_last_exercise_info()
+    await query.edit_message_text(text=text)
+    reply_markup = InlineKeyboardMarkup([
+                    [InlineKeyboardButton("Done", callback_data=str(SELECT_NEXT_EXERCISES))],
+                    [InlineKeyboardButton("Delete Data", callback_data=str(DELETE_EXERCISE_DATA))]
+                    ])
     await context.bot.send_message(chat_id=query.message.chat_id, text="How many reps did you do?", reply_markup=reply_markup)
     return TRAINING_ROUTES
+
+async def delete_exercise_data(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """This function should delete the last entry of the current exercise and return to run_exercise."""
+    dbhelper.delete_exercise_data()
 
 async def get_remark(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """
@@ -235,6 +231,7 @@ def main() -> None:
                 CallbackQueryHandler(select_exercises, pattern="^" + str(SELECT_NEXT_EXERCISES) + "$"),
                 CallbackQueryHandler(run_exercise, pattern="^" + str(RUN_EXERCISE) + "_*."),
                 CallbackQueryHandler(training_menu, pattern="^" + str(TRAINING_MENU) + "$"),
+                CallbackQueryHandler(delete_exercise_data, pattern="^" + str(DELETE_EXERCISE_DATA) + "$"),
                 CallbackQueryHandler(end, pattern="^" + str(END) + "$"),
                 # MessageHandler with regex filter for all numbers
                 MessageHandler(filters.Regex(pattern="^[0-9]+$"), get_reps),
