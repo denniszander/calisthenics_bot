@@ -8,6 +8,7 @@ class DBHelper:
         self.conn = sqlite3.connect(dbname)
         self.plan_id = None
         self.training_id = None
+        self.exercise_id = None
 
     def exercises(self):
         """
@@ -30,6 +31,8 @@ class DBHelper:
         Plan should be the given instance variable 
         Finally set the training_id instance variable
         """
+        if self.training_id is not None:
+            return
         start_int = int(time.time())
         stmt = "INSERT INTO Training (Start, Plan) VALUES (?, ?)"
         args = (start_int, self.plan_id)
@@ -41,7 +44,7 @@ class DBHelper:
         resultsRaw = cursor.fetchone()
         self.training_id = resultsRaw[0]
 
-    def get_last_exercise_info(self, exercise_id):
+    def get_last_exercise_info(self):
         """
         Get the last time the exercise was done and reps from the database
         Args:
@@ -53,12 +56,52 @@ class DBHelper:
                  SELECT e.name, h.Reps, h.Remark, t.Start
                    FROM Exercises e, History h, Training t, TrID
                   WHERE e.ID = ? AND h.ExerciseID = ? AND h.TrainingID = TrID.TrainingID AND t.ID = TrID.TrainingID;"""
-        args = (exercise_id, exercise_id, exercise_id)
+        args = (self.exercise_id, self.exercise_id, self.exercise_id)
         cursor = self.conn.execute(stmt, args)
         resultsRaw = cursor.fetchone()
         if resultsRaw is None:
             return F"You have not done this exercise yet."
         return F"Last time you did {resultsRaw[0]} was {resultsRaw[1]} times on {time.strftime('%d.%m.%Y', time.localtime(resultsRaw[3]))} with the remark: {resultsRaw[2]}"
+
+    def update_history_reps(self, reps):
+        """
+        Update the history table with the given exercise, reps 
+        If we already have a training session started and did the exercise before append the new reps to the old ones
+        Args:
+            reps (str): number of reps
+        """
+        stmt = "SELECT Reps FROM History WHERE TrainingID = ? AND ExerciseID = ?"
+        args = (self.training_id, self.exercise_id)
+        cursor = self.conn.execute(stmt, args)
+        resultsRaw = cursor.fetchone()
+        if resultsRaw is None:
+            stmt = "INSERT INTO History (TrainingID, ExerciseID, Reps) VALUES (?, ?, ?)"
+            args = (self.training_id, self.exercise_id, reps)
+        else:
+            stmt = "UPDATE History SET Reps = ? WHERE TrainingID = ? AND ExerciseID = ?"
+            args = (resultsRaw[0] + ", " + reps, self.training_id, self.exercise_id)
+        self.conn.execute(stmt, args)
+        self.conn.commit()
+
+    def update_history_remark(self, remark):
+        """
+        Update the history table with the given remark 
+        Overwrite the old remark, if there is one
+        Args:
+            remark (str): remark
+        """
+        stmt = "SELECT Remark FROM History WHERE TrainingID = ? AND ExerciseID = ?"
+        args = (self.training_id, self.exercise_id)
+        cursor = self.conn.execute(stmt, args)
+        resultsRaw = cursor.fetchone()
+        if resultsRaw is None:
+            stmt = "INSERT INTO History (TrainingID, ExerciseID, Remark) VALUES (?, ?, ?)"
+            args = (self.training_id, self.exercise_id, remark)
+        else:
+            stmt = "UPDATE History SET Remark = ? WHERE TrainingID = ? AND ExerciseID = ?"
+            args = (remark, self.training_id, self.exercise_id)
+        self.conn.execute(stmt, args)
+        self.conn.commit()
 
 if __name__ == '__main__':
     db = DBHelper()
