@@ -25,8 +25,7 @@ logger = logging.getLogger(__name__)
 # Stages
 START_ROUTES, TRAINING_MENU_ROUTES, TRAINING_ROUTES, DATA_ROUTES, VISUALS_ROUTES, END_ROUTES = range(6)
 # Callback data
-ZERO, ONE, TWO, THREE, FOUR = range(5)
-DELETE_EXERCISE_DATA, GET_REMARK, REMARK, START_AGAIN, TRAINING_MENU, TRAINING, DATA, VISUALS, END, END_FINAL, SELECT_PLAN, START_TRAINING, SELECT_EXERCISES, SELECT_NEXT_EXERCISES, RUN_EXERCISE, GET_REPS = range(16)
+ADD_EXERCISE, EDIT_EXERCISE, DELETE_EXERCISE_DATA, GET_REMARK, REMARK, START_AGAIN, TRAINING_MENU, TRAINING, DATA, VISUALS, END, END_FINAL, SELECT_PLAN, START_TRAINING, SELECT_EXERCISES, SELECT_NEXT_EXERCISES, RUN_EXERCISE, GET_REPS, DATA_ADD = range(19)
 # Initialize dbhelper
 dbhelper = DBHelper(dbname="./DB/Calisthenics")
 
@@ -76,14 +75,46 @@ async def data(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
     await query.answer()
     keyboard = [
-        [InlineKeyboardButton("Run Again", callback_data=str(DATA))],
+            [InlineKeyboardButton("Add Exercise", callback_data=str(ADD_EXERCISE))],
+        [InlineKeyboardButton("Edit Exercise", callback_data=str(ADD_EXERCISE))],
         [InlineKeyboardButton("End", callback_data=str(END))],
         ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await query.edit_message_text(
-        text="Let's add some more exercise", reply_markup=reply_markup
-    )
+    basic_text = "Let's add some more exercise"
+    if query.data == str(DATA):
+        await query.edit_message_text(text=basic_text, reply_markup=reply_markup)
+    elif query.data == str(DATA_ADD):
+        add_text = F"Exercise: {context.user_data['exercise_name']} \nURL: {context.user_data['exercise_url']}\n"
+        await query.edit_message_text(text=add_text + basic_text, reply_markup=reply_markup)
     return DATA_ROUTES
+
+async def add_exercise(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    query = update.callback_query
+    await query.answer()
+    keyboard = [
+        [InlineKeyboardButton("Done", callback_data=str(DATA_ADD))],
+        [InlineKeyboardButton("Dismiss", callback_data=str(DATA))],
+        ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await query.edit_message_text(text="Let me know the Name and URL of the exercise", reply_markup=reply_markup)
+    return DATA_ROUTES
+
+async def get_message_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """
+    Write user input into context.user_data (name and url of exercise)
+    Only accept two messages, after that no more messages are accepted.
+    """
+    try:
+        status = context.user_data['add_exercise_status']
+    except:
+        status = 0
+    message_text = update.message.text
+    if status == 0:
+        context.user_data['exercise_name'] = message_text
+        context.user_data['add_exercise_status'] = 1
+    elif status == 1:
+        context.user_data['exercise_url'] = message_text
+        context.user_data.pop('add_exercise_status', None)
 
 async def visuals(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Show new choice of buttons"""
@@ -240,7 +271,10 @@ def main() -> None:
             ],
             DATA_ROUTES: [
                 CallbackQueryHandler(data, pattern="^" + str(DATA) + "$"),
+                CallbackQueryHandler(data, pattern="^" + str(DATA_ADD) + "$"),
+                CallbackQueryHandler(add_exercise, pattern="^" + str(ADD_EXERCISE) + "$"),
                 CallbackQueryHandler(end, pattern="^" + str(END) + "$"),
+                MessageHandler(filters.TEXT, get_message_text),
             ],
             VISUALS_ROUTES: [
                 CallbackQueryHandler(visuals, pattern="^" + str(VISUALS) + "$"),
