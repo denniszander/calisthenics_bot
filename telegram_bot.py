@@ -23,9 +23,9 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 # Stages
-START_ROUTES, TRAINING_MENU_ROUTES, TRAINING_ROUTES, DATA_ROUTES, VISUALS_ROUTES, END_ROUTES = range(6)
+START_ROUTES, TRAINING_MENU_ROUTES, TRAINING_ROUTES, DATA_ROUTES, END_ROUTES = range(5)
 # Callback data
-ADD_EXERCISE, EDIT_EXERCISE, DELETE_EXERCISE_DATA, GET_REMARK, REMARK, START_AGAIN, TRAINING_MENU, TRAINING, DATA, VISUALS, END, END_FINAL, SELECT_PLAN, START_TRAINING, SELECT_EXERCISES, SELECT_NEXT_EXERCISES, RUN_EXERCISE, GET_REPS, DATA_ADD = range(19)
+ADD_EXERCISE, EDIT_EXERCISE, DELETE_EXERCISE_DATA, GET_REMARK, REMARK, START_AGAIN, TRAINING_MENU, TRAINING, DATA, END, END_FINAL, SELECT_PLAN, START_TRAINING, SELECT_EXERCISES, SELECT_NEXT_EXERCISES, RUN_EXERCISE, GET_REPS, DATA_ADD = range(18)
 # Initialize dbhelper
 dbhelper = DBHelper(dbname="./DB/Calisthenics")
 
@@ -41,7 +41,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     keyboard = [
         [InlineKeyboardButton("Start Training", callback_data=str(TRAINING_MENU))],
         [InlineKeyboardButton("Add or Change Data", callback_data=str(DATA))],
-        [InlineKeyboardButton("Visual", callback_data=str(VISUALS))],
         [InlineKeyboardButton("End", callback_data=str(END))],
      ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -76,7 +75,6 @@ async def data(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await query.answer()
     keyboard = [
             [InlineKeyboardButton("Add Exercise", callback_data=str(ADD_EXERCISE))],
-        [InlineKeyboardButton("Edit Exercise", callback_data=str(ADD_EXERCISE))],
         [InlineKeyboardButton("End", callback_data=str(END))],
         ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -85,18 +83,28 @@ async def data(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         await query.edit_message_text(text=basic_text, reply_markup=reply_markup)
     elif query.data == str(DATA_ADD):
         add_text = F"Exercise: {context.user_data['exercise_name']} \nURL: {context.user_data['exercise_url']}\n"
-        await query.edit_message_text(text=add_text + basic_text, reply_markup=reply_markup)
+        dbhelper.add_new_exercise(context.user_data['exercise_name'], context.user_data['exercise_url'])
+        await query.edit_message_text(text='Exercise added!')
+        await context.bot.send_message(chat_id=query.message.chat_id, text=add_text + basic_text, reply_markup=reply_markup)
     return DATA_ROUTES
 
 async def add_exercise(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    query = update.callback_query
-    await query.answer()
-    keyboard = [
-        [InlineKeyboardButton("Done", callback_data=str(DATA_ADD))],
-        [InlineKeyboardButton("Dismiss", callback_data=str(DATA))],
-        ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await query.edit_message_text(text="Let me know the Name and URL of the exercise", reply_markup=reply_markup)
+    status = context.user_data.get('add_exercise_status')
+    if status is None:
+        query = update.callback_query
+        await query.answer()
+        await query.edit_message_text(text="Let me know the Name of the exercise:")
+        context.user_data['last_query'] = query
+    elif status == 1:
+        query = context.user_data['last_query']
+        await query.edit_message_text(text="Let me know the URL of the exercise:")
+    elif status == 2:
+        context.user_data.pop('add_exercise_status', None)
+        query = context.user_data['last_query']
+        context.user_data.pop('last_query', None)
+        keyboard = [[InlineKeyboardButton("Save", callback_data=str(DATA_ADD))], [InlineKeyboardButton("Dismiss", callback_data=str(DATA))],]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text(text="What do you want to do?", reply_markup=reply_markup)
     return DATA_ROUTES
 
 async def get_message_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -104,31 +112,15 @@ async def get_message_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     Write user input into context.user_data (name and url of exercise)
     Only accept two messages, after that no more messages are accepted.
     """
-    try:
-        status = context.user_data['add_exercise_status']
-    except:
-        status = 0
+    status = context.user_data.get('add_exercise_status')
     message_text = update.message.text
-    if status == 0:
+    if status is None:
         context.user_data['exercise_name'] = message_text
         context.user_data['add_exercise_status'] = 1
     elif status == 1:
         context.user_data['exercise_url'] = message_text
-        context.user_data.pop('add_exercise_status', None)
-
-async def visuals(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Show new choice of buttons"""
-    query = update.callback_query
-    await query.answer()
-    keyboard = [
-        [InlineKeyboardButton("Run Again", callback_data=str(VISUALS))],
-        [InlineKeyboardButton("End", callback_data=str(END))],
-        ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await query.edit_message_text(
-        text="You want to see how strong you are?", reply_markup=reply_markup
-    )
-    return VISUALS_ROUTES
+        context.user_data['add_exercise_status'] = 2
+    return await add_exercise(update, context)
 
 async def end(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Show new choice of buttons"""
@@ -247,7 +239,6 @@ def main() -> None:
             START_ROUTES: [
                 CallbackQueryHandler(training_menu, pattern="^" + str(TRAINING_MENU) + "$"),
                 CallbackQueryHandler(data, pattern="^" + str(DATA) + "$"),
-                CallbackQueryHandler(visuals, pattern="^" + str(VISUALS) + "$"),
                 CallbackQueryHandler(end, pattern="^" + str(END) + "$"),
             ],
             TRAINING_MENU_ROUTES: [
@@ -275,10 +266,6 @@ def main() -> None:
                 CallbackQueryHandler(add_exercise, pattern="^" + str(ADD_EXERCISE) + "$"),
                 CallbackQueryHandler(end, pattern="^" + str(END) + "$"),
                 MessageHandler(filters.TEXT, get_message_text),
-            ],
-            VISUALS_ROUTES: [
-                CallbackQueryHandler(visuals, pattern="^" + str(VISUALS) + "$"),
-                CallbackQueryHandler(end, pattern="^" + str(END) + "$"),
             ],
             END_ROUTES: [
                 CallbackQueryHandler(start, pattern="^" + str(START_AGAIN) + "$"),

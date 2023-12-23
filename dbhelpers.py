@@ -113,6 +113,18 @@ class DBHelper:
         self.conn.execute(stmt, args)
         self.conn.commit()
 
+    def add_new_exercise(self, exercise, link):
+        """
+        Add a new exercise to the database
+        Args:
+            exercise (str): name of the exercise
+            link (str): link to the exercise
+        """
+        stmt = "INSERT INTO Exercises (Name, Link) VALUES (?, ?)"
+        args = (exercise, link)
+        self.conn.execute(stmt, args)
+        self.conn.commit()
+
 if __name__ == '__main__':
     db = DBHelper()
     #-#- Example to catch exercises
