@@ -35,6 +35,11 @@ def bulid_exercise_keyboard():
     output_keyboard.insert(0, [InlineKeyboardButton("End Training", callback_data=str(END))])
     return output_keyboard
 
+def bulid_plan_keyboard():
+    plans = dbhelper.plans()
+    output_keyboard = [[InlineKeyboardButton(plan[1], callback_data=str(START_TRAINING)+'_'+str(plan[0]))] for plan in plans]
+    output_keyboard.insert(0, [InlineKeyboardButton("End Training", callback_data=str(END))])
+    return output_keyboard
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Send message on `/start`."""
@@ -146,23 +151,16 @@ async def end_final(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return ConversationHandler.END
 
 
-async def select_plan(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Show new choice of buttons"""
-    query = update.callback_query
-    await query.answer()
-    keyboard = [
-        [InlineKeyboardButton("Go Back", callback_data=str(TRAINING_MENU))],
-        [InlineKeyboardButton("Start training", callback_data=str(START_TRAINING))],
-        ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await query.edit_message_text(
-        text="Select today's plan", reply_markup=reply_markup
-    )
-    return TRAINING_MENU_ROUTES
 
 async def start_training(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Show new choice of buttons"""
     query = update.callback_query
+    # Get the plan_id from the callback data (if available)
+    plan_id = query.data.split('_')
+    if len(plan_id) == 2:
+        dbhelper.plan_id = plan_id[1]
+    else :
+        dbhelper.plan_id = None # Reset plan_id if set before
     await query.answer()
     keyboard = [
         [InlineKeyboardButton("Go Back", callback_data=str(TRAINING_MENU))],
@@ -192,6 +190,18 @@ async def select_exercises(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         await query.edit_message_text(text=text)
         await context.bot.send_message(chat_id=query.message.chat_id, text="Select your exercise:", reply_markup=reply_markup)
     return TRAINING_ROUTES
+
+async def select_plan(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """This function needs to have following functionalities:
+            1. Show all exercieses with the possibility to choose them (maybe only 10? With more button? Later...)
+            2. Have a fallback into start menu
+    """
+    query = update.callback_query
+    await query.answer()
+    keyboard = bulid_plan_keyboard()
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await query.edit_message_text(text="Select your plan:", reply_markup=reply_markup)
+    return TRAINING_MENU_ROUTES
 
 async def run_exercise(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """When this function is called for the first time, it should show the last set and repetions of the exercise (if there is any).
@@ -244,7 +254,7 @@ def main() -> None:
             TRAINING_MENU_ROUTES: [
                 CallbackQueryHandler(training_menu, pattern="^" + str(TRAINING_MENU) + "$"),
                 CallbackQueryHandler(select_plan, pattern="^" + str(SELECT_PLAN) + "$"),
-                CallbackQueryHandler(start_training, pattern="^" + str(START_TRAINING) + "$"),
+                CallbackQueryHandler(start_training, pattern="^" + str(START_TRAINING) ),
                 CallbackQueryHandler(end, pattern="^" + str(END) + "$"),
             ],
             TRAINING_ROUTES: [
