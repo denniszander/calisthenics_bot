@@ -13,10 +13,30 @@ class DBHelper:
     def exercises(self):
         """
         Get all exercises and return them as a list.
+        If plan_id is set, only return exercises for this plan
         Returns: 
             list of tuples: (int, str, str) = (id, exercise, link to exercise)
         """
-        stmt = "SELECT Id, Name, Link  FROM Exercises"
+        stmt = "SELECT Id, Name, Link FROM Exercises"
+        if self.plan_id is not None:
+            stmt += " WHERE Id IN (SELECT ExerciseID FROM Exercise_in_Plan WHERE PlanID = ?)"
+            args = (self.plan_id,)
+            cursor = self.conn.execute(stmt, args)
+        else:
+            cursor = self.conn.execute(stmt)
+        resultsRaw = cursor.fetchall()
+        results = []
+        for row in resultsRaw:
+            results.append(row)
+        return results
+
+    def plans(self):
+        """
+        Get all plans and return them as a list.
+        Returns: 
+            list of tuples: (int, str) = (id, plan)
+        """
+        stmt = "SELECT Id, Name FROM Plans"
         cursor = self.conn.execute(stmt)
         resultsRaw = cursor.fetchall()
         results = []
