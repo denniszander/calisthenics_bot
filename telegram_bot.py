@@ -25,20 +25,34 @@ logger = logging.getLogger(__name__)
 # Stages
 START_ROUTES, TRAINING_MENU_ROUTES, TRAINING_ROUTES, DATA_ROUTES, END_ROUTES = range(5)
 # Callback data
-ADD_EXERCISE, EDIT_EXERCISE, DELETE_EXERCISE_DATA, GET_REMARK, REMARK, START_AGAIN, TRAINING_MENU, TRAINING, DATA, END, END_FINAL, SELECT_PLAN, START_TRAINING, SELECT_EXERCISES, SELECT_NEXT_EXERCISES, RUN_EXERCISE, GET_REPS, DATA_ADD = range(18)
+ADD_EXERCISE, EDIT_EXERCISE, DELETE_EXERCISE_DATA, GET_REMARK, REMARK, START_AGAIN, TRAINING_MENU, TRAINING, DATA, END, END_FINAL, SELECT_PLAN, START_TRAINING, SELECT_EXERCISES, SELECT_EXERCISES_SPLIT, SELECT_NEXT_EXERCISES, RUN_EXERCISE, RUN_EXERCISE_SPLIT, GET_REPS, DATA_ADD = range(20)
 # Initialize dbhelper
 dbhelper = DBHelper(dbname="./DB/Calisthenics")
 
 def bulid_exercise_keyboard():
     exercises = dbhelper.exercises()
-    output_keyboard = [[InlineKeyboardButton(exercise[1], callback_data=str(RUN_EXERCISE)+'_'+str(exercise[0]))] for exercise in exercises]
-    output_keyboard.insert(0, [InlineKeyboardButton("End Training", callback_data=str(END))])
+    if dbhelper.split and dbhelper.exercise_id is None:
+        callback_data = str(SELECT_EXERCISES_SPLIT)
+    else:
+        callback_data = str(RUN_EXERCISE)
+    output_keyboard = [[InlineKeyboardButton(exercise[1], callback_data=callback_data + '_' + str(exercise[0]))] for exercise in exercises]
+    if not dbhelper.split:
+        output_keyboard.insert(0, [InlineKeyboardButton("Split Training", callback_data=str(SELECT_EXERCISES_SPLIT))])
+        output_keyboard.insert(0, [InlineKeyboardButton("End Training", callback_data=str(END))])
     return output_keyboard
 
 def bulid_plan_keyboard():
     plans = dbhelper.plans()
     output_keyboard = [[InlineKeyboardButton(plan[1], callback_data=str(START_TRAINING)+'_'+str(plan[0]))] for plan in plans]
-    output_keyboard.insert(0, [InlineKeyboardButton("End Training", callback_data=str(END))])
+    return output_keyboard
+
+def build_run_exercise_keyboard():
+    output_keyboard = [[InlineKeyboardButton("Done", callback_data=str(SELECT_NEXT_EXERCISES))],
+                       [InlineKeyboardButton("Delete Data", callback_data=str(DELETE_EXERCISE_DATA))]
+                      ]
+    if dbhelper.split:
+        split_exercise = dbhelper.split_exercise()
+        output_keyboard.insert(2, [InlineKeyboardButton("Change to: " +  split_exercise[1], callback_data=str(RUN_EXERCISE_SPLIT) + '_' + str(split_exercise[0]))])
     return output_keyboard
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -66,7 +80,6 @@ async def training_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     keyboard = [
         [InlineKeyboardButton("Plan", callback_data=str(SELECT_PLAN))],
         [InlineKeyboardButton("Exercises", callback_data=str(START_TRAINING))],
-        [InlineKeyboardButton("End", callback_data=str(END))],
         ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await query.edit_message_text(
@@ -150,8 +163,6 @@ async def end_final(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await query.edit_message_text(text="See you next time!")
     return ConversationHandler.END
 
-
-
 async def start_training(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Show new choice of buttons"""
     query = update.callback_query
@@ -163,8 +174,8 @@ async def start_training(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         dbhelper.plan_id = None # Reset plan_id if set before
     await query.answer()
     keyboard = [
-        [InlineKeyboardButton("Go Back", callback_data=str(TRAINING_MENU))],
         [InlineKeyboardButton("Start training", callback_data=str(SELECT_EXERCISES))],
+        [InlineKeyboardButton("Go Back", callback_data=str(TRAINING_MENU))],
         ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await query.edit_message_text(
@@ -177,18 +188,36 @@ async def select_exercises(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             1. Show all exercieses with the possibility to choose them (maybe only 10? With more button? Later...)
             2. Have a fallback into start menu
     """
+    # Prepare some variables
+    exercise_text = "Select your exercise:"
+
+    # Get and process the callback data
     query = update.callback_query
     await query.answer()
-    keyboard = bulid_exercise_keyboard()
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    if query.data == str(SELECT_EXERCISES):
+    query_split = query.data.split('_')
+    if query.data == str(SELECT_EXERCISES): # SELECT_EXERCISES is only called once at the beginning of the training
         dbhelper.start_training()
-        await query.edit_message_text(text="Select your exercise:", reply_markup=reply_markup)
-    else:
-        text = "Nice job! \n" + dbhelper.get_last_exercise_info() 
+    elif query.data == str(SELECT_NEXT_EXERCISES):
+        # Reset exercise variables
         dbhelper.exercise_id = None
+        dbhelper.exercise_split_id = None
+        dbhelper.split = False
+    elif query.data == str(SELECT_EXERCISES_SPLIT):
+        dbhelper.split = True
+    elif len(query_split) == 2 and query_split[0] == str(SELECT_EXERCISES_SPLIT):
+        dbhelper.exercise_id = query_split[1]
+        exercise_text = "Select your next exercise:"
+
+    # Build the keyboard
+    reply_markup = InlineKeyboardMarkup(bulid_exercise_keyboard())
+
+    # Process answers to user
+    if query.data == str(SELECT_NEXT_EXERCISES):
+        text = "Nice job! \n" + dbhelper.get_last_exercise_info() 
         await query.edit_message_text(text=text)
-        await context.bot.send_message(chat_id=query.message.chat_id, text="Select your exercise:", reply_markup=reply_markup)
+        await context.bot.send_message(chat_id=query.message.chat_id, text=exercise_text, reply_markup=reply_markup)
+    else:
+        await query.edit_message_text(text=exercise_text, reply_markup=reply_markup)
     return TRAINING_ROUTES
 
 async def select_plan(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -198,8 +227,7 @@ async def select_plan(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
     """
     query = update.callback_query
     await query.answer()
-    keyboard = bulid_plan_keyboard()
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    reply_markup = InlineKeyboardMarkup(bulid_plan_keyboard())
     await query.edit_message_text(text="Select your plan:", reply_markup=reply_markup)
     return TRAINING_MENU_ROUTES
 
@@ -208,13 +236,19 @@ async def run_exercise(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     Then it should ask for input of the new set and repetions. Set by set.
     """
     query = update.callback_query
-    dbhelper.exercise_id = query.data.split('_')[1]
+    query_split = query.data.split('_')
+    if query_split[0] == str(RUN_EXERCISE): # RUN_EXERCISE is called from other functions
+        if dbhelper.split:
+            dbhelper.exercise_split_id = query_split[1]
+        else:
+            dbhelper.exercise_id = query_split[1]
+    elif query_split[0] == str(RUN_EXERCISE_SPLIT):
+        dbhelper.exercise_split_id = dbhelper.exercise_id
+        dbhelper.exercise_id = query_split[1]
+
     text = "Last time you did: \n" + dbhelper.get_last_exercise_info()
     await query.edit_message_text(text=text)
-    reply_markup = InlineKeyboardMarkup([
-                    [InlineKeyboardButton("Done", callback_data=str(SELECT_NEXT_EXERCISES))],
-                    [InlineKeyboardButton("Delete Data", callback_data=str(DELETE_EXERCISE_DATA))]
-                    ])
+    reply_markup = InlineKeyboardMarkup(build_run_exercise_keyboard())
     await context.bot.send_message(chat_id=query.message.chat_id, text="How many reps did you do?", reply_markup=reply_markup)
     return TRAINING_ROUTES
 
@@ -260,8 +294,10 @@ def main() -> None:
             TRAINING_ROUTES: [
                 CallbackQueryHandler(get_remark, pattern="^" + str(GET_REMARK) + "$"),
                 CallbackQueryHandler(select_exercises, pattern="^" + str(SELECT_EXERCISES) + "$"),
+                CallbackQueryHandler(select_exercises, pattern="^" + str(SELECT_EXERCISES_SPLIT)),
                 CallbackQueryHandler(select_exercises, pattern="^" + str(SELECT_NEXT_EXERCISES) + "$"),
                 CallbackQueryHandler(run_exercise, pattern="^" + str(RUN_EXERCISE) + "_*."),
+                CallbackQueryHandler(run_exercise, pattern="^" + str(RUN_EXERCISE_SPLIT) + "_*."),
                 CallbackQueryHandler(training_menu, pattern="^" + str(TRAINING_MENU) + "$"),
                 CallbackQueryHandler(delete_exercise_data, pattern="^" + str(DELETE_EXERCISE_DATA) + "$"),
                 CallbackQueryHandler(end, pattern="^" + str(END) + "$"),

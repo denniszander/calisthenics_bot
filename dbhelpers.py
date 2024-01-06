@@ -8,7 +8,9 @@ class DBHelper:
         self.conn = sqlite3.connect(dbname)
         self.plan_id = None
         self.training_id = None
+        self.split = False
         self.exercise_id = None
+        self.exercise_split_id = None
 
     def exercises(self):
         """
@@ -25,6 +27,22 @@ class DBHelper:
         else:
             cursor = self.conn.execute(stmt)
         resultsRaw = cursor.fetchall()
+        results = []
+        for row in resultsRaw:
+            results.append(row)
+        return results
+
+    def split_exercise(self):
+        """
+        Get split exercise and return as a tuple.
+        Returns: 
+            tuples: (int, str, str) = (id, exercise, link to exercise)
+        """
+        stmt = "SELECT Id, Name, Link FROM Exercises"
+        stmt += " WHERE Id = ?"
+        args = (self.exercise_split_id, )
+        cursor = self.conn.execute(stmt, args)
+        resultsRaw = cursor.fetchone()
         results = []
         for row in resultsRaw:
             results.append(row)
