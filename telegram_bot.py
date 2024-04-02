@@ -63,6 +63,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         [InlineKeyboardButton("End", callback_data=str(END))],
      ]
     reply_markup = InlineKeyboardMarkup(keyboard)
+    reply_markup
     # Send message with text and appended InlineKeyboard
     # Depending on when the this command is called, we need a new message or edit the message/keyboard.
     if update.message is not None:
@@ -158,6 +159,7 @@ async def end_final(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Returns `ConversationHandler.END`, which tells the
     ConversationHandler that the conversation is over.
     """
+    dbhelper.training_id = None     # Reset training id! Only done here.
     query = update.callback_query
     await query.answer()
     await query.edit_message_text(text="See you next time!")
@@ -197,6 +199,7 @@ async def select_exercises(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     query_split = query.data.split('_')
     if query.data == str(SELECT_EXERCISES): # SELECT_EXERCISES is only called once at the beginning of the training
         dbhelper.start_training()
+        logger.info(f'Start new training with id: {dbhelper.training_id}')
     elif query.data == str(SELECT_NEXT_EXERCISES):
         # Reset exercise variables
         dbhelper.exercise_id = None
